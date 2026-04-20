@@ -1699,6 +1699,8 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
   const [tuningFetchLoading, setTuningFetchLoading] = useState(false);
   const [streamPhoneOpen, setStreamPhoneOpen] = useState(false);
   const [streamSidebarOpen, setStreamSidebarOpen] = useState(false);
+  const [honeKeywordsOpen, setHoneKeywordsOpen] = useState(false);
+  const [honeGenresOpen, setHoneGenresOpen] = useState(false);
   const prevHadTuningRef = useRef(false);
 
   const activeStreamDefs = useMemo(
@@ -1780,6 +1782,40 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
     setGenreAddonOn({});
     setStreamPhoneOpen(false);
     setStreamSidebarOpen(false);
+    setHoneKeywordsOpen(false);
+    setHoneGenresOpen(false);
+  };
+
+  /** Phone: only one refine panel open at a time — keeps the stack short so picks stay primary. */
+  const phoneOpenKeywords = () => {
+    setHoneKeywordsOpen(v => {
+      const next = !v;
+      if (next) {
+        setHoneGenresOpen(false);
+        setStreamPhoneOpen(false);
+      }
+      return next;
+    });
+  };
+  const phoneOpenGenres = () => {
+    setHoneGenresOpen(v => {
+      const next = !v;
+      if (next) {
+        setHoneKeywordsOpen(false);
+        setStreamPhoneOpen(false);
+      }
+      return next;
+    });
+  };
+  const phoneOpenStreaming = () => {
+    setStreamPhoneOpen(v => {
+      const next = !v;
+      if (next) {
+        setHoneKeywordsOpen(false);
+        setHoneGenresOpen(false);
+      }
+      return next;
+    });
   };
 
   const handleLoadMorePicks = async () => {
@@ -1810,14 +1846,29 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
     ? `${movies.length}${moreMovies.length ? `+${moreMovies.length}` : ""} refined`
     : `${movies.length}${moreMovies.length ? `+${moreMovies.length}` : ""} picks`;
 
-  const honeChip = (on, extra = {}) => ({
+  const honeOptionRow = (on, compact) => ({
     ...S.streamFilterBtn,
-    fontSize: isPhone ? 9 : 10,
-    padding: isPhone ? "4px 7px" : "5px 9px",
-    marginBottom: 5,
-    marginRight: 5,
+    width: "100%",
+    textAlign: "left",
+    boxSizing: "border-box",
+    padding: compact ? "5px 8px" : "6px 9px",
+    marginBottom: compact ? 3 : 4,
+    fontSize: 10,
     ...(on ? S.streamFilterBtnOn : {}),
-    ...extra,
+  });
+
+  const honeDropdownTrigger = (compact) => ({
+    ...S.btn,
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    fontSize: compact ? 10 : 11,
+    padding: compact ? "6px 8px" : "6px 8px",
+    textAlign: "left",
+    marginBottom: compact ? 4 : 6,
+    opacity: 0.9,
   });
 
   return (
@@ -1842,6 +1893,8 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
           overflowY: isNarrow ? "visible" : S.resSidebar.overflowY,
           paddingRight: isNarrow ? 0 : S.resSidebar.paddingRight,
           zIndex: isNarrow ? "auto" : S.resSidebar.zIndex,
+          order: isPhone ? 2 : 0,
+          minWidth: 0,
         }}
       >
         {isPhone ? (
@@ -1849,118 +1902,124 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
             style={{
               border: "1px solid rgba(232,213,183,0.1)",
               borderRadius: 8,
-              padding: "8px 10px 10px",
+              padding: "6px 8px 8px",
               background: "rgba(232,213,183,0.02)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontFamily: "monospace", fontSize: 8, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(232,213,183,0.32)" }}>
-                Your session
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+              <span style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "1.2px", textTransform: "uppercase", color: "rgba(232,213,183,0.3)" }}>
+                Session
               </span>
-              <span style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(232,213,183,0.48)", whiteSpace: "nowrap" }}>{phonePickSummary}</span>
+              <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(232,213,183,0.45)", whiteSpace: "nowrap" }}>{phonePickSummary}</span>
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "6px 12px",
-                alignItems: "start",
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "1px", textTransform: "uppercase", color: "rgba(232,213,183,0.28)", margin: "0 0 2px" }}>Mood</p>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 4 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: "monospace", fontSize: 6, letterSpacing: "0.8px", textTransform: "uppercase", color: "rgba(232,213,183,0.26)", margin: "0 0 1px" }}>Mood</p>
                 <p style={{
                   fontFamily: "Georgia,serif",
-                  fontSize: 11,
+                  fontSize: 10,
                   color: "#e8d5b7",
                   margin: 0,
                   fontStyle: "italic",
-                  lineHeight: 1.25,
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
                   overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
                 >
                   {moodLabel}
                 </p>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "1px", textTransform: "uppercase", color: "rgba(232,213,183,0.28)", margin: "0 0 2px" }}>Watching</p>
-                <p style={{ fontFamily: "Georgia,serif", fontSize: 11, color: "#e8d5b7", margin: 0, lineHeight: 1.25 }}>
+              <div style={{ flexShrink: 0, textAlign: "right", maxWidth: "42%" }}>
+                <p style={{ fontFamily: "monospace", fontSize: 6, letterSpacing: "0.8px", textTransform: "uppercase", color: "rgba(232,213,183,0.26)", margin: "0 0 1px" }}>As</p>
+                <p style={{ fontFamily: "Georgia,serif", fontSize: 10, color: "#e8d5b7", margin: 0, lineHeight: 1.2 }}>
                   {VIEWER_MODES[viewerMode].emoji} {VIEWER_MODES[viewerMode].label}
                 </p>
               </div>
             </div>
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(232,213,183,0.07)" }}>
-              <p style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "1px", textTransform: "uppercase", color: "rgba(232,213,183,0.28)", margin: "0 0 6px" }}>Hone in</p>
-              <p style={{ fontFamily: "monospace", fontSize: 7, color: "rgba(232,213,183,0.22)", margin: "0 0 6px", lineHeight: 1.35 }}>
-                Keywords &amp; genres refetch picks with your quiz answers (OR within each group).
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 6 }}>
-                {KEYWORD_HONE_PRESETS.map(kw => {
-                  const on = !!keywordOn[kw.id];
-                  return (
-                    <button key={kw.id} type="button" onClick={() => toggleKeyword(kw.id)} style={honeChip(on)}>
-                      {on ? "✓ " : ""}{kw.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 4 }}>
-                {GENRE_ADDON_PRESETS.map(g => {
-                  const on = !!genreAddonOn[g.id];
-                  return (
-                    <button key={g.id} type="button" onClick={() => toggleGenreAddon(g.id)} style={honeChip(on, { opacity: on ? 1 : 0.72 })}>
-                      {on ? "✓ " : ""}{g.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {tuningActive && (
-                <button type="button" onClick={clearAllTuning} style={{ ...S.btn, fontSize: 9, padding: "5px 8px", marginTop: 2, width: "100%", opacity: 0.5 }}>
-                  Clear hone-ins &amp; streaming
-                </button>
-              )}
-            </div>
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(232,213,183,0.07)" }}>
+            <div style={{ marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(232,213,183,0.07)" }}>
               <button
                 type="button"
-                onClick={() => setStreamPhoneOpen(o => !o)}
+                onClick={phoneOpenKeywords}
+                aria-expanded={honeKeywordsOpen}
+                style={honeDropdownTrigger(true)}
+              >
+                <span style={{ fontFamily: "Georgia,serif", color: "#c8b99a" }}>
+                  Keywords
+                  {keywordIds.length > 0 && (
+                    <span style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(200,169,110,0.95)", marginLeft: 6 }}>
+                      {keywordIds.length} on
+                    </span>
+                  )}
+                </span>
+                <span style={{ fontSize: 8, color: "rgba(232,213,183,0.45)", flexShrink: 0 }}>{honeKeywordsOpen ? "▴" : "▾"}</span>
+              </button>
+              {honeKeywordsOpen && (
+                <div style={{ marginBottom: 6 }}>
+                  {KEYWORD_HONE_PRESETS.map(kw => {
+                    const on = !!keywordOn[kw.id];
+                    return (
+                      <button key={kw.id} type="button" onClick={() => toggleKeyword(kw.id)} style={honeOptionRow(on, true)}>
+                        {on ? "✓ " : ""}{kw.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={phoneOpenGenres}
+                aria-expanded={honeGenresOpen}
+                style={honeDropdownTrigger(true)}
+              >
+                <span style={{ fontFamily: "Georgia,serif", color: "#c8b99a" }}>
+                  Genres
+                  {genreAddonIds.length > 0 && (
+                    <span style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(200,169,110,0.95)", marginLeft: 6 }}>
+                      {genreAddonIds.length} on
+                    </span>
+                  )}
+                </span>
+                <span style={{ fontSize: 8, color: "rgba(232,213,183,0.45)", flexShrink: 0 }}>{honeGenresOpen ? "▴" : "▾"}</span>
+              </button>
+              {honeGenresOpen && (
+                <div style={{ marginBottom: 6 }}>
+                  {GENRE_ADDON_PRESETS.map(g => {
+                    const on = !!genreAddonOn[g.id];
+                    return (
+                      <button key={g.id} type="button" onClick={() => toggleGenreAddon(g.id)} style={honeOptionRow(on, true)}>
+                        {on ? "✓ " : ""}{g.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={phoneOpenStreaming}
                 aria-expanded={streamPhoneOpen}
-                style={{
-                  ...S.btn,
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  fontSize: 11,
-                  padding: "7px 10px",
-                  textAlign: "left",
-                  opacity: 0.85,
-                }}
+                style={honeDropdownTrigger(true)}
               >
                 <span style={{ fontFamily: "Georgia,serif", color: "#c8b99a" }}>
                   Streaming
                   {activeStreamDefs.length > 0 && (
-                    <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(200,169,110,0.95)", marginLeft: 6 }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(200,169,110,0.95)", marginLeft: 6 }}>
                       {activeStreamDefs.length} on
                     </span>
                   )}
                 </span>
-                <span style={{ fontSize: 9, color: "rgba(232,213,183,0.45)", flexShrink: 0 }}>{streamPhoneOpen ? "▴" : "▾"}</span>
+                <span style={{ fontSize: 8, color: "rgba(232,213,183,0.45)", flexShrink: 0 }}>{streamPhoneOpen ? "▴" : "▾"}</span>
               </button>
-              {!streamPhoneOpen && tuningFetchLoading && tuningActive && (
-                <p style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(232,213,183,0.38)", margin: "5px 0 0" }}>Updating…</p>
+              {!honeKeywordsOpen && !honeGenresOpen && !streamPhoneOpen && tuningFetchLoading && tuningActive && (
+                <p style={{ fontFamily: "monospace", fontSize: 7, color: "rgba(232,213,183,0.35)", margin: "4px 0 0" }}>Updating…</p>
               )}
               {streamPhoneOpen && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(232,213,183,0.06)" }}>
-                  <p style={{ fontFamily: "monospace", fontSize: 7, color: "rgba(232,213,183,0.28)", margin: "0 0 6px", lineHeight: 1.35 }}>
-                    Limit picks to services you have (NL / US, flatrate or rent).
+                <div style={{ marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(232,213,183,0.06)" }}>
+                  <p style={{ fontFamily: "monospace", fontSize: 7, color: "rgba(232,213,183,0.26)", margin: "0 0 5px", lineHeight: 1.3 }}>
+                    NL / US · flatrate or rent
                   </p>
                   {tuningFetchLoading && tuningActive && (
-                    <p style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(232,213,183,0.42)", margin: "0 0 6px" }}>Fetching…</p>
+                    <p style={{ fontFamily: "monospace", fontSize: 7, color: "rgba(232,213,183,0.38)", margin: "0 0 5px" }}>Fetching…</p>
                   )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                     {STREAMING_SERVICE_FILTERS.map(f => {
@@ -1973,7 +2032,7 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
                           style={{
                             ...S.streamFilterBtn,
                             padding: "5px 8px",
-                            marginBottom: 4,
+                            marginBottom: 3,
                             fontSize: 10,
                             ...(on ? S.streamFilterBtnOn : {}),
                             borderLeft: `3px solid ${on ? f.accent : "transparent"}`,
@@ -1985,13 +2044,18 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
                     })}
                   </div>
                   {activeStreamDefs.length > 0 && (
-                    <button type="button" onClick={clearStreamFilters} style={{ ...S.btn, fontSize: 9, padding: "5px 8px", marginTop: 6, width: "100%", opacity: 0.5 }}>
+                    <button type="button" onClick={clearStreamFilters} style={{ ...S.btn, fontSize: 8, padding: "4px 8px", marginTop: 5, width: "100%", opacity: 0.5 }}>
                       Clear streaming only
                     </button>
                   )}
                 </div>
               )}
             </div>
+            {tuningActive && (
+              <button type="button" onClick={clearAllTuning} style={{ ...S.btn, fontSize: 8, padding: "5px 6px", marginTop: 6, width: "100%", opacity: 0.45 }}>
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -2015,34 +2079,68 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
 
         <div style={{ ...S.resSidebarBlock, paddingTop: 4 }}>
           <p style={S.resSidebarLabel}>Hone in</p>
-          <p style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(232,213,183,0.22)", margin: "0 0 8px", lineHeight: 1.45 }}>
-            Add keywords or extra genres — we run discover again with your quiz answers. Multiple chips in a group widen the net (OR).
+          <p style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(232,213,183,0.22)", margin: "0 0 8px", lineHeight: 1.4 }}>
+            Optional — refetch with quiz + OR keywords / OR extra genres.
           </p>
-          <p style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "0.5px", textTransform: "uppercase", color: "rgba(232,213,183,0.26)", margin: "0 0 5px" }}>Keywords</p>
-          <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 10 }}>
-            {KEYWORD_HONE_PRESETS.map(kw => {
-              const on = !!keywordOn[kw.id];
-              return (
-                <button key={kw.id} type="button" onClick={() => toggleKeyword(kw.id)} style={honeChip(on)}>
-                  {on ? "✓ " : ""}{kw.label}
-                </button>
-              );
-            })}
-          </div>
-          <p style={{ fontFamily: "monospace", fontSize: 7, letterSpacing: "0.5px", textTransform: "uppercase", color: "rgba(232,213,183,0.26)", margin: "0 0 5px" }}>Genres</p>
-          <div style={{ display: "flex", flexWrap: "wrap", marginBottom: 4 }}>
-            {GENRE_ADDON_PRESETS.map(g => {
-              const on = !!genreAddonOn[g.id];
-              return (
-                <button key={g.id} type="button" onClick={() => toggleGenreAddon(g.id)} style={honeChip(on, { opacity: on ? 1 : 0.75 })}>
-                  {on ? "✓ " : ""}{g.label}
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => setHoneKeywordsOpen(v => !v)}
+            aria-expanded={honeKeywordsOpen}
+            style={honeDropdownTrigger(false)}
+          >
+            <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "rgba(232,213,183,0.38)" }}>
+              Keywords
+              {keywordIds.length > 0 && (
+                <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(200,169,110,0.9)", marginLeft: 8 }}>
+                  {keywordIds.length} on
+                </span>
+              )}
+            </span>
+            <span style={{ fontSize: 9, color: "rgba(232,213,183,0.45)" }}>{honeKeywordsOpen ? "▴" : "▾"}</span>
+          </button>
+          {honeKeywordsOpen && (
+            <div style={{ marginBottom: 8 }}>
+              {KEYWORD_HONE_PRESETS.map(kw => {
+                const on = !!keywordOn[kw.id];
+                return (
+                  <button key={kw.id} type="button" onClick={() => toggleKeyword(kw.id)} style={honeOptionRow(on, false)}>
+                    {on ? "✓ " : ""}{kw.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setHoneGenresOpen(v => !v)}
+            aria-expanded={honeGenresOpen}
+            style={honeDropdownTrigger(false)}
+          >
+            <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase", color: "rgba(232,213,183,0.38)" }}>
+              Genres
+              {genreAddonIds.length > 0 && (
+                <span style={{ fontFamily: "monospace", fontSize: 9, color: "rgba(200,169,110,0.9)", marginLeft: 8 }}>
+                  {genreAddonIds.length} on
+                </span>
+              )}
+            </span>
+            <span style={{ fontSize: 9, color: "rgba(232,213,183,0.45)" }}>{honeGenresOpen ? "▴" : "▾"}</span>
+          </button>
+          {honeGenresOpen && (
+            <div style={{ marginBottom: 4 }}>
+              {GENRE_ADDON_PRESETS.map(g => {
+                const on = !!genreAddonOn[g.id];
+                return (
+                  <button key={g.id} type="button" onClick={() => toggleGenreAddon(g.id)} style={honeOptionRow(on, false)}>
+                    {on ? "✓ " : ""}{g.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {tuningActive && (
             <button type="button" onClick={clearAllTuning} style={{ ...S.btn, fontSize: 10, padding: "6px 8px", marginTop: 6, width: "100%", opacity: 0.55 }}>
-              Clear hone-ins &amp; streaming
+              Clear all filters
             </button>
           )}
         </div>
@@ -2131,8 +2229,8 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
         )}
       </div>
 
-      {/* ── Main results ── */}
-      <div style={{ ...S.resultsWrap, gap: isNarrow ? 16 : S.resultsWrap.gap }}>
+      {/* ── Main results ── (first on phone so picks lead) */}
+      <div style={{ ...S.resultsWrap, gap: isNarrow ? 16 : S.resultsWrap.gap, order: isPhone ? 1 : 0, minWidth: 0 }}>
         <div style={{ marginBottom: 8 }}>
           <h2 style={{ ...S.title, fontSize: "clamp(20px,3vw,28px)", margin: 0 }}>Your FlickMatch</h2>
           <p style={S.subtitle}>
