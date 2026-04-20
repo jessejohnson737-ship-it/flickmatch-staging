@@ -572,8 +572,10 @@ async function fetchResultsWithTuning(answers, viewerMode, opts = {}) {
     }
   }
 
-  if (results.length === 0 && hasTuning) {
-    return fetchResultsWithTuning(answers, viewerMode, { streamDefs, keywordIds: [], extraGenreIds: tuning.extraGenreIds });
+  // Do not silently drop keywords/genres — that produced misleading picks (e.g. wrong keyword id
+  // yielded 0 TMDB hits, then we refetched without the hone-in and showed random comedies).
+  if (results.length === 0 && (tuning.keywordIds.length > 0 || tuning.extraGenreIds.length > 0)) {
+    return [];
   }
   if (results.length === 0) return fetchFinalMovies(answers, viewerMode);
   return results;
@@ -739,11 +741,11 @@ const KEYWORD_HONE_PRESETS = [
   { id: 818, label: "Based on a book" },
   { id: 9672, label: "True story" },
   { id: 18035, label: "Superhero" },
-  { id: 3405, label: "Vampire" },
+  { id: 3133, label: "Vampire" },
   { id: 14964, label: "Satire" },
   { id: 6038, label: "Martial arts" },
   { id: 9799, label: "Courtroom" },
-  { id: 3215, label: "Dystopia" },
+  { id: 4458, label: "Dystopia" },
 ];
 
 // Extra genre OR-chips (merged into mood `with_genres`).
@@ -2151,7 +2153,7 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
               Nothing turned up for that combo (mood + hone-ins + streaming).
             </p>
             <p style={{ fontFamily: "Georgia,serif", fontSize: 12, color: "rgba(232,213,183,0.45)", margin: "10px 0 0" }}>
-              Try fewer keywords, different services, or clear hone-ins to restore baseline picks.
+              Mood + keywords + genres must all match TMDB discover together — some combos are very tight. Remove a chip, try another keyword, or clear hone-ins for baseline picks.
             </p>
           </div>
         ) : (
