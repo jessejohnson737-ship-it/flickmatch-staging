@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "moodpicker",
+  "name": "flickmatch-staging",
   "compatibility_date": "2026-04-20",
   "observability": {
     "enabled": true
