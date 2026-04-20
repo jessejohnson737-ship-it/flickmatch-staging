@@ -174,46 +174,70 @@ export default {
       const upstream = await fetch(targetUrl, { headers });
       const outHeaders = new Headers(upstream.headers);
       outHeaders.delete("Set-Cookie");
-      Object.entries(cors).forEach(([k, v]) => outHeaders.set(k, v));
       outHeaders.set("X-Content-Type-Options", "nosniff");
       outHeaders.set("Referrer-Policy", "no-referrer");
       outHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
       return new Response(upstream.body, { status: upstream.status, headers: outHeaders });
     });
 
-    return res;
+    // Always attach CORS at the edge, even for cached responses.
+    const finalHeaders = new Headers(res.headers);
+    Object.entries(cors).forEach(([k, v]) => finalHeaders.set(k, v));
+    return new Response(res.body, { status: res.status, headers: finalHeaders });
   },
 };
 
 export class RateLimiter implements DurableObject {
   private state: DurableObjectState;
+  private inMemoryCount = 0;
+  private inMemoryWindowStart = Date.now();
 
   constructor(state: DurableObjectState) {
     this.state = state;
   }
 
   async fetch(): Promise<Response> {
-    // Fixed-window limit: 60 requests per 60 seconds per IP.
+    // Fixed-window limit per IP.
+    //
+    // NOTE: The UI can legitimately issue bursts of TMDB discover calls (preview grid + final picks).
+    // A 60/min limit is too aggressive for real usage and causes empty UI states.
     const now = Date.now();
     const windowMs = 60_000;
-    const limit = 60;
+    const limit = 600;
 
     const key = "rl";
-    const current = (await this.state.storage.get<{ start: number; count: number }>(key)) || {
-      start: now,
-      count: 0,
-    };
+    const persisted = (await this.state.storage.get<{ start: number; count: number }>(key)) || null;
 
-    if (now - current.start >= windowMs) {
-      current.start = now;
-      current.count = 0;
+    // Prefer in-memory counting within the current window to avoid hammering DO storage.
+    if (now - this.inMemoryWindowStart >= windowMs) {
+      this.inMemoryWindowStart = now;
+      this.inMemoryCount = 0;
     }
 
-    current.count += 1;
-    await this.state.storage.put(key, current);
+    // If we have persisted state from a previous isolate, align windows conservatively.
+    if (persisted && now - persisted.start < windowMs) {
+      // Keep the higher of persisted vs in-memory counts for this window.
+      const elapsed = now - persisted.start;
+      if (elapsed < windowMs) {
+        this.inMemoryCount = Math.max(this.inMemoryCount, persisted.count);
+        this.inMemoryWindowStart = persisted.start;
+      }
+    }
 
-    if (current.count > limit) {
-      const retryAfter = Math.max(1, Math.ceil((windowMs - (now - current.start)) / 1000));
+    this.inMemoryCount += 1;
+
+    // Persist occasionally (reduces DO write amplification) while still surviving DO restarts.
+    const shouldPersist =
+      this.inMemoryCount === 1 ||
+      this.inMemoryCount % 25 === 0 ||
+      this.inMemoryCount > limit;
+
+    if (shouldPersist) {
+      await this.state.storage.put(key, { start: this.inMemoryWindowStart, count: this.inMemoryCount });
+    }
+
+    if (this.inMemoryCount > limit) {
+      const retryAfter = Math.max(1, Math.ceil((windowMs - (now - this.inMemoryWindowStart)) / 1000));
       return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
         status: 429,
         headers: {

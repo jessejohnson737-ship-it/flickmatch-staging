@@ -5,7 +5,7 @@ compatibility_date = "2026-04-20"
 [vars]
 # Comma-separated list of allowed origins, e.g.
 # "https://your-space.hf.space,https://your-custom-domain.com"
-ALLOWED_ORIGINS = ""
+ALLOWED_ORIGINS = "https://moodpicker.jessejohnson737.workers.dev"
 
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"

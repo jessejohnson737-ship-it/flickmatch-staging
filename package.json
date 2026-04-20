@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:proxy": "cd proxy && wrangler deploy --config wrangler.toml",
+    "deploy:all": "npm run deploy && npm run deploy:proxy"
   },
   "dependencies": {
     "react": "^19.2.5",
