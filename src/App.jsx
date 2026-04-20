@@ -304,9 +304,27 @@ function discoverWithGenresValue(answers, pool) {
   return pool.length === 1 ? String(pool[0]) : pool.map(String).join("|");
 }
 
+/**
+ * TMDB `with_genres`: comma = AND, pipe = OR. Mood uses pipes between pool options.
+ * Genre hone chips must **narrow** results: each selected addon is AND'd onto every mood branch
+ * (e.g. comedy `35` + Animation → `35,16` so picks are actually animated comedies, not comedy OR animation).
+ */
+function mergeGenreHoneWithMood(moodWithGenres, extraGenreIds) {
+  const addons = [...new Set((extraGenreIds || []).filter(n => Number.isFinite(n)).map(String))];
+  if (addons.length === 0) return moodWithGenres || null;
+  const mood = (moodWithGenres || "").trim();
+  if (!mood) return addons.join("|");
+  const branches = mood.split("|").map(s => s.trim()).filter(Boolean);
+  if (branches.length === 0) return addons.join("|");
+  return branches.map(branch => {
+    const parts = branch.split(",").map(s => s.trim()).filter(Boolean);
+    return [...new Set([...parts, ...addons])].join(",");
+  }).join("|");
+}
+
 // ─── TMDB param builder ───────────────────────────────────────────────────────
 // Optional `stream`: when set, restricts discover to titles available on those providers in `watchRegion` (TMDB + JustWatch).
-// Optional `tuning`: sidebar refinements — OR-extra genres on `with_genres`, OR-keywords on `with_keywords` (pipe-separated).
+// Optional `tuning`: keywords OR together (`|`); genre addons AND onto each mood OR-branch (see `mergeGenreHoneWithMood`).
 function buildParams(answers, attempt = 0, viewerMode = "casual", stream = null, tuning = null) {
   const mode = VIEWER_MODES[viewerMode] || VIEWER_MODES.casual;
 
@@ -378,9 +396,8 @@ function buildParams(answers, attempt = 0, viewerMode = "casual", stream = null,
 
   const extraGenreIds = (tuning?.extraGenreIds || []).filter(n => Number.isFinite(n));
   if (extraGenreIds.length) {
-    const existing = p.get("with_genres");
-    const merged = new Set([...(existing ? existing.split("|") : []), ...extraGenreIds.map(String)]);
-    p.set("with_genres", [...merged].join("|"));
+    const merged = mergeGenreHoneWithMood(p.get("with_genres") || "", extraGenreIds);
+    if (merged) p.set("with_genres", merged);
   }
 
   const keywordIds = (tuning?.keywordIds || []).filter(n => Number.isFinite(n));
@@ -731,26 +748,26 @@ const STREAMING_SERVICE_FILTERS = [
   { key: "crunchyroll", label: "Crunchyroll", ids: [283], accent: "#F47521" },
 ];
 
-// TMDB keyword ids (discover `with_keywords`, pipe = OR). Curated for “hone in” on results.
+// TMDB keyword ids (`with_keywords`, pipe = OR). Labels spot-checked via discover; swap if TMDB retags.
 const KEYWORD_HONE_PRESETS = [
   { id: 12565, label: "Psychological thriller" },
-  { id: 10049, label: "Heist" },
+  { id: 10594, label: "Con artist" },
   { id: 9748, label: "Revenge" },
   { id: 4379, label: "Time travel" },
-  { id: 10612, label: "Coming of age" },
+  { id: 10873, label: "High school" },
   { id: 818, label: "Based on a book" },
   { id: 9672, label: "True story" },
   { id: 18035, label: "Superhero" },
   { id: 3133, label: "Vampire" },
   { id: 14964, label: "Satire" },
-  { id: 6038, label: "Martial arts" },
-  { id: 9799, label: "Courtroom" },
+  { id: 417, label: "Plot twist" },
   { id: 4458, label: "Dystopia" },
 ];
 
-// Extra genre OR-chips (merged into mood `with_genres`).
+// Extra genre chips — AND’d onto each mood branch in discover (see `mergeGenreHoneWithMood`).
 const GENRE_ADDON_PRESETS = [
   { id: GENRES.animation, label: "Animation" },
+  { id: GENRES.action, label: "Action" },
   { id: 99, label: "Documentary" },
   { id: GENRES.romance, label: "Romance" },
   { id: GENRES.scifi, label: "Sci‑Fi" },
@@ -2080,7 +2097,7 @@ function Results({ movies, answers, viewerMode, onRefine, onReset, onReplaceMovi
         <div style={{ ...S.resSidebarBlock, paddingTop: 4 }}>
           <p style={S.resSidebarLabel}>Hone in</p>
           <p style={{ fontFamily: "monospace", fontSize: 8, color: "rgba(232,213,183,0.22)", margin: "0 0 8px", lineHeight: 1.4 }}>
-            Optional — refetch with quiz + OR keywords / OR extra genres.
+            Optional — refetch with quiz. Keywords: any you pick (OR). Genres: every chip you pick must match too (AND on your mood).
           </p>
           <button
             type="button"
